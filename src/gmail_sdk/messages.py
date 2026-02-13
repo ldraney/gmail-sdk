@@ -52,20 +52,20 @@ class MessagesMixin:
     def get_message(
         self,
         message_id: str,
-        format: str = "full",
+        format_: str = "full",
         metadata_headers: list[str] | None = None,
     ) -> dict[str, Any]:
         """GET /users/me/messages/{id} — Get a specific message.
 
         Args:
             message_id: The message ID.
-            format: Response format: full, metadata, minimal, or raw.
+            format_: Response format: full, metadata, minimal, or raw.
             metadata_headers: Headers to include when format=metadata.
 
         Returns:
             Full message resource.
         """
-        params: dict[str, Any] = {"format": format}
+        params: dict[str, Any] = {"format": format_}
         if metadata_headers:
             params["metadataHeaders"] = metadata_headers
         return self._get(f"/users/me/messages/{message_id}", params=params)
@@ -75,6 +75,7 @@ class MessagesMixin:
         to: str,
         subject: str,
         body: str,
+        from_addr: str | None = None,
         cc: str | None = None,
         bcc: str | None = None,
         thread_id: str | None = None,
@@ -85,6 +86,7 @@ class MessagesMixin:
             to: Recipient email address.
             subject: Email subject.
             body: Plain text body.
+            from_addr: Sender address (optional, Gmail defaults to authenticated user).
             cc: CC address.
             bcc: BCC address.
             thread_id: Thread ID to send in (for replies).
@@ -92,12 +94,12 @@ class MessagesMixin:
         Returns:
             Sent message resource.
         """
-        raw = build_simple_message(to=to, subject=subject, body=body, cc=cc, bcc=bcc)
+        raw = build_simple_message(to=to, subject=subject, body=body, from_addr=from_addr, cc=cc, bcc=bcc)
         payload: dict[str, Any] = {"raw": raw}
         if thread_id:
             payload["threadId"] = thread_id
         resp = self._post("/users/me/messages/send", json=payload)
-        return resp.json() if resp.text.strip() else {}
+        return resp.json() if resp.content else {}
 
     def send_raw_message(
         self,
@@ -117,7 +119,7 @@ class MessagesMixin:
         if thread_id:
             payload["threadId"] = thread_id
         resp = self._post("/users/me/messages/send", json=payload)
-        return resp.json() if resp.text.strip() else {}
+        return resp.json() if resp.content else {}
 
     def modify_message(
         self,
@@ -141,7 +143,7 @@ class MessagesMixin:
         if remove_label_ids:
             payload["removeLabelIds"] = remove_label_ids
         resp = self._post(f"/users/me/messages/{message_id}/modify", json=payload)
-        return resp.json() if resp.text.strip() else {}
+        return resp.json() if resp.content else {}
 
     def trash_message(self, message_id: str) -> dict[str, Any]:
         """POST /users/me/messages/{id}/trash — Move message to trash.
@@ -153,7 +155,7 @@ class MessagesMixin:
             Trashed message resource.
         """
         resp = self._post(f"/users/me/messages/{message_id}/trash")
-        return resp.json() if resp.text.strip() else {}
+        return resp.json() if resp.content else {}
 
     def untrash_message(self, message_id: str) -> dict[str, Any]:
         """POST /users/me/messages/{id}/untrash — Remove message from trash.
@@ -165,7 +167,7 @@ class MessagesMixin:
             Untrashed message resource.
         """
         resp = self._post(f"/users/me/messages/{message_id}/untrash")
-        return resp.json() if resp.text.strip() else {}
+        return resp.json() if resp.content else {}
 
     def delete_message(self, message_id: str) -> int:
         """DELETE /users/me/messages/{id} — Permanently delete a message.

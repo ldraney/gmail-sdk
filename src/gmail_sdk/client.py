@@ -21,6 +21,15 @@ GMAIL_BASE = "https://gmail.googleapis.com/gmail/v1"
 DEFAULT_SECRETS_DIR = os.path.join(os.path.expanduser("~"), "secrets", "google-oauth")
 
 
+class GmailAPIError(Exception):
+    """Exception wrapping Gmail API HTTP errors."""
+
+    def __init__(self, status_code: int, message: str) -> None:
+        self.status_code = status_code
+        self.message = message
+        super().__init__(f"Gmail API error {status_code}: {message}")
+
+
 class GmailClient(
     AuthMixin,
     MessagesMixin,
@@ -32,7 +41,12 @@ class GmailClient(
     SettingsMixin,
     ConvenienceMixin,
 ):
-    """Synchronous Python client for the Gmail REST API."""
+    """Synchronous Python client for the Gmail REST API.
+
+    Either ``account`` or ``access_token`` must be provided. If neither is
+    given, the client will be created without authentication and API calls
+    will fail.
+    """
 
     def __init__(
         self,
@@ -60,34 +74,52 @@ class GmailClient(
 
     # ---- low-level helpers ------------------------------------------------
 
+    @staticmethod
+    def _raise_api_error(resp: httpx.Response) -> None:
+        """Raise GmailAPIError from an httpx response."""
+        try:
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            try:
+                detail = resp.json().get("error", {}).get("message", resp.text)
+            except Exception:
+                detail = resp.text
+            raise GmailAPIError(resp.status_code, detail) from exc
+
     def _get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         resp = self._http.get(path, params=params)
-        resp.raise_for_status()
-        return resp.json() if resp.text.strip() else {}
+        self._raise_api_error(resp)
+        return resp.json() if resp.content else {}
 
     def _post(
         self,
         path: str,
         json: dict[str, Any] | None = None,
     ) -> httpx.Response:
-        resp = self._http.post(path, json=json or {})
-        resp.raise_for_status()
+        resp = self._http.post(path, json=json)
+        self._raise_api_error(resp)
         return resp
 
     def _delete(self, path: str) -> int:
         resp = self._http.delete(path)
-        resp.raise_for_status()
+        self._raise_api_error(resp)
         return resp.status_code
 
     def _patch(self, path: str, json: dict[str, Any] | None = None) -> dict[str, Any]:
-        resp = self._http.patch(path, json=json or {})
-        resp.raise_for_status()
-        return resp.json() if resp.text.strip() else {}
+        resp = self._http.patch(path, json=json)
+        self._raise_api_error(resp)
+        return resp.json() if resp.content else {}
 
     def _put(self, path: str, json: dict[str, Any] | None = None) -> dict[str, Any]:
-        resp = self._http.put(path, json=json or {})
-        resp.raise_for_status()
-        return resp.json() if resp.text.strip() else {}
+        resp = self._http.put(path, json=json)
+        self._raise_api_error(resp)
+        return resp.json() if resp.content else {}
+
+    def __enter__(self) -> GmailClient:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
 
     def close(self) -> None:
         self._http.close()

@@ -35,7 +35,7 @@ class ConvenienceMixin:
         Returns:
             Sent message resource.
         """
-        original = self.get_message(message_id, format="metadata", metadata_headers=["From", "Subject", "Message-ID", "References"])
+        original = self.get_message(message_id, format_="metadata", metadata_headers=["From", "Subject", "Message-ID", "References"])
         headers = original.get("payload", {}).get("headers", [])
 
         to = _get_header(headers, "From")
@@ -72,7 +72,7 @@ class ConvenienceMixin:
         Returns:
             Sent message resource.
         """
-        original = self.get_message(message_id, format="full")
+        original = self.get_message(message_id, format_="full")
         headers = original.get("payload", {}).get("headers", [])
 
         subject = _get_header(headers, "Subject")
@@ -103,16 +103,21 @@ class ConvenienceMixin:
 
     @staticmethod
     def _extract_body(payload: dict[str, Any]) -> str:
-        """Extract plain text body from a Gmail message payload."""
+        """Extract plain text body from a Gmail message payload.
+
+        Recursively traverses nested multipart structures to find the first
+        text/plain part.
+        """
         import base64
 
         # Simple single-part message
         if payload.get("mimeType") == "text/plain" and "data" in payload.get("body", {}):
             return base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8", errors="replace")
 
-        # Multipart — look for text/plain
+        # Multipart — recurse into parts
         for part in payload.get("parts", []):
-            if part.get("mimeType") == "text/plain" and "data" in part.get("body", {}):
-                return base64.urlsafe_b64decode(part["body"]["data"]).decode("utf-8", errors="replace")
+            result = ConvenienceMixin._extract_body(part)
+            if result != "(no text body found)":
+                return result
 
         return "(no text body found)"

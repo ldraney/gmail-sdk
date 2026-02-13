@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from gmail_sdk import GmailClient
 
 
@@ -18,7 +20,7 @@ class TestListMessages:
     def test_get_message(self, client: GmailClient):
         listing = client.list_messages(max_results=1)
         if not listing.get("messages"):
-            return  # empty inbox
+            pytest.skip("empty inbox")
         msg_id = listing["messages"][0]["id"]
         msg = client.get_message(msg_id)
         assert "id" in msg

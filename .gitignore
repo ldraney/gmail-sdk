@@ -11,11 +11,10 @@ build/
 venv/
 .env
 .uv/
-uv.lock
 
 # OAuth tokens — never commit
-*.json
-!pyproject.toml
+gmail-*.json
+credentials.json
 
 # IDE
 .idea/

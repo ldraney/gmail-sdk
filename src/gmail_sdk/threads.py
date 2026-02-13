@@ -42,20 +42,20 @@ class ThreadsMixin:
     def get_thread(
         self,
         thread_id: str,
-        format: str = "full",
+        format_: str = "full",
         metadata_headers: list[str] | None = None,
     ) -> dict[str, Any]:
         """GET /users/me/threads/{id} — Get a specific thread.
 
         Args:
             thread_id: The thread ID.
-            format: Response format: full, metadata, or minimal.
+            format_: Response format: full, metadata, or minimal.
             metadata_headers: Headers to include when format=metadata.
 
         Returns:
             Full thread resource with messages.
         """
-        params: dict[str, Any] = {"format": format}
+        params: dict[str, Any] = {"format": format_}
         if metadata_headers:
             params["metadataHeaders"] = metadata_headers
         return self._get(f"/users/me/threads/{thread_id}", params=params)
@@ -82,7 +82,7 @@ class ThreadsMixin:
         if remove_label_ids:
             payload["removeLabelIds"] = remove_label_ids
         resp = self._post(f"/users/me/threads/{thread_id}/modify", json=payload)
-        return resp.json() if resp.text.strip() else {}
+        return resp.json() if resp.content else {}
 
     def trash_thread(self, thread_id: str) -> dict[str, Any]:
         """POST /users/me/threads/{id}/trash — Move thread to trash.
@@ -94,7 +94,7 @@ class ThreadsMixin:
             Trashed thread resource.
         """
         resp = self._post(f"/users/me/threads/{thread_id}/trash")
-        return resp.json() if resp.text.strip() else {}
+        return resp.json() if resp.content else {}
 
     def untrash_thread(self, thread_id: str) -> dict[str, Any]:
         """POST /users/me/threads/{id}/untrash — Remove thread from trash.
@@ -106,7 +106,7 @@ class ThreadsMixin:
             Untrashed thread resource.
         """
         resp = self._post(f"/users/me/threads/{thread_id}/untrash")
-        return resp.json() if resp.text.strip() else {}
+        return resp.json() if resp.content else {}
 
     def delete_thread(self, thread_id: str) -> int:
         """DELETE /users/me/threads/{id} — Permanently delete a thread.

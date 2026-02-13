@@ -8,8 +8,11 @@ import time
 import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from urllib.parse import urlencode, urlparse, parse_qs
+
+if TYPE_CHECKING:
+    from .client import GmailClient
 
 import httpx
 
@@ -140,9 +143,9 @@ class AuthMixin:
     def _save_token(account: str, secrets_dir: str, token_data: dict[str, Any]) -> None:
         """Save token data to disk with restricted permissions."""
         token_path = Path(secrets_dir) / f"gmail-{account}.json"
-        with open(token_path, "w") as f:
+        fd = os.open(str(token_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
             json.dump(token_data, f, indent=2)
-        token_path.chmod(0o600)
 
     @classmethod
     def _load_and_refresh_token(cls, account: str, secrets_dir: str) -> str:
@@ -154,7 +157,7 @@ class AuthMixin:
                 f"Run GmailClient.authorize(account='{account}') first."
             )
 
-        if token_data.get("expires_at", 0) < time.time():
+        if token_data.get("expires_at", 0) < time.time() + 300:
             creds = cls._load_credentials(secrets_dir)
             new_data = cls.refresh_access_token(
                 client_id=creds["client_id"],
@@ -175,7 +178,7 @@ class AuthMixin:
         cls,
         account: str,
         secrets_dir: str | None = None,
-    ):
+    ) -> GmailClient:
         """Run the full OAuth flow: open browser, capture code, save token, return client.
 
         Args:

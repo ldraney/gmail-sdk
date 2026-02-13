@@ -45,7 +45,7 @@ class FiltersMixin:
             "/users/me/settings/filters",
             json={"criteria": criteria, "action": action},
         )
-        return resp.json() if resp.text.strip() else {}
+        return resp.json() if resp.content else {}
 
     def delete_filter(self, filter_id: str) -> int:
         """DELETE /users/me/settings/filters/{id} — Delete a filter.

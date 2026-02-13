@@ -51,7 +51,7 @@ class LabelsMixin:
                 "messageListVisibility": message_list_visibility,
             },
         )
-        return resp.json() if resp.text.strip() else {}
+        return resp.json() if resp.content else {}
 
     def update_label(
         self,
@@ -61,6 +61,10 @@ class LabelsMixin:
         message_list_visibility: str | None = None,
     ) -> dict[str, Any]:
         """PATCH /users/me/labels/{id} — Update a label.
+
+        This performs a partial update via PATCH. Only the fields you provide
+        will be changed; omitted fields remain unchanged. This is not a full
+        replacement (PUT).
 
         Args:
             label_id: The label ID.

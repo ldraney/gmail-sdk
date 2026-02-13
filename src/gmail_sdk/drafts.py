@@ -36,24 +36,25 @@ class DraftsMixin:
     def get_draft(
         self,
         draft_id: str,
-        format: str = "full",
+        format_: str = "full",
     ) -> dict[str, Any]:
         """GET /users/me/drafts/{id} — Get a specific draft.
 
         Args:
             draft_id: The draft ID.
-            format: Response format: full, metadata, minimal, or raw.
+            format_: Response format: full, metadata, minimal, or raw.
 
         Returns:
             Draft resource with message.
         """
-        return self._get(f"/users/me/drafts/{draft_id}", params={"format": format})
+        return self._get(f"/users/me/drafts/{draft_id}", params={"format": format_})
 
     def create_draft(
         self,
         to: str,
         subject: str,
         body: str,
+        from_addr: str | None = None,
         cc: str | None = None,
         bcc: str | None = None,
         thread_id: str | None = None,
@@ -64,6 +65,7 @@ class DraftsMixin:
             to: Recipient email address.
             subject: Email subject.
             body: Plain text body.
+            from_addr: Sender address (optional, Gmail defaults to authenticated user).
             cc: CC address.
             bcc: BCC address.
             thread_id: Thread ID to attach draft to.
@@ -71,12 +73,12 @@ class DraftsMixin:
         Returns:
             Created draft resource.
         """
-        raw = build_simple_message(to=to, subject=subject, body=body, cc=cc, bcc=bcc)
+        raw = build_simple_message(to=to, subject=subject, body=body, from_addr=from_addr, cc=cc, bcc=bcc)
         message: dict[str, Any] = {"raw": raw}
         if thread_id:
             message["threadId"] = thread_id
         resp = self._post("/users/me/drafts", json={"message": message})
-        return resp.json() if resp.text.strip() else {}
+        return resp.json() if resp.content else {}
 
     def create_raw_draft(
         self,
@@ -96,7 +98,7 @@ class DraftsMixin:
         if thread_id:
             message["threadId"] = thread_id
         resp = self._post("/users/me/drafts", json={"message": message})
-        return resp.json() if resp.text.strip() else {}
+        return resp.json() if resp.content else {}
 
     def send_draft(self, draft_id: str) -> dict[str, Any]:
         """POST /users/me/drafts/send — Send an existing draft.
@@ -108,7 +110,7 @@ class DraftsMixin:
             Sent message resource.
         """
         resp = self._post("/users/me/drafts/send", json={"id": draft_id})
-        return resp.json() if resp.text.strip() else {}
+        return resp.json() if resp.content else {}
 
     def delete_draft(self, draft_id: str) -> int:
         """DELETE /users/me/drafts/{id} — Permanently delete a draft.
