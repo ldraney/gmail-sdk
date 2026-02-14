@@ -13,11 +13,19 @@ from gmail_sdk.mime_utils import (
 )
 
 
+def _b64url_decode(data: str) -> bytes:
+    """Decode base64url with missing padding."""
+    padding = 4 - len(data) % 4
+    if padding != 4:
+        data += "=" * padding
+    return base64.urlsafe_b64decode(data)
+
+
 class TestBuildSimpleMessage:
     def test_basic_message(self):
         raw = build_simple_message(to="test@example.com", subject="Hello", body="Hi there")
         # Should be valid base64url
-        decoded = base64.urlsafe_b64decode(raw)
+        decoded = _b64url_decode(raw)
         msg = message_from_bytes(decoded)
         assert msg["To"] == "test@example.com"
         assert msg["Subject"] == "Hello"
@@ -31,7 +39,7 @@ class TestBuildSimpleMessage:
             cc="cc@example.com",
             bcc="bcc@example.com",
         )
-        decoded = base64.urlsafe_b64decode(raw)
+        decoded = _b64url_decode(raw)
         msg = message_from_bytes(decoded)
         assert msg["Cc"] == "cc@example.com"
         assert msg["Bcc"] == "bcc@example.com"
@@ -43,7 +51,7 @@ class TestBuildSimpleMessage:
             body="body",
             from_addr="sender@example.com",
         )
-        decoded = base64.urlsafe_b64decode(raw)
+        decoded = _b64url_decode(raw)
         msg = message_from_bytes(decoded)
         assert msg["From"] == "sender@example.com"
 
@@ -57,7 +65,7 @@ class TestBuildReplyMessage:
             message_id="<abc123@example.com>",
             references="<abc123@example.com>",
         )
-        decoded = base64.urlsafe_b64decode(raw)
+        decoded = _b64url_decode(raw)
         msg = message_from_bytes(decoded)
         assert msg["In-Reply-To"] == "<abc123@example.com>"
         assert msg["References"] == "<abc123@example.com>"
@@ -69,7 +77,7 @@ class TestBuildReplyMessage:
             body="Thanks!",
             message_id="<abc123@example.com>",
         )
-        decoded = base64.urlsafe_b64decode(raw)
+        decoded = _b64url_decode(raw)
         msg = message_from_bytes(decoded)
         assert msg["References"] == "<abc123@example.com>"
 
@@ -82,7 +90,7 @@ class TestBuildForwardMessage:
             original_body="Original content here",
             note="FYI",
         )
-        decoded = base64.urlsafe_b64decode(raw)
+        decoded = _b64url_decode(raw)
         msg = message_from_bytes(decoded)
         payload = msg.get_payload(decode=True).decode()
         assert "Original content here" in payload
@@ -95,7 +103,7 @@ class TestBuildForwardMessage:
             subject="Fwd: Hello",
             original_body="Original content",
         )
-        decoded = base64.urlsafe_b64decode(raw)
+        decoded = _b64url_decode(raw)
         msg = message_from_bytes(decoded)
         payload = msg.get_payload(decode=True).decode()
         assert "Original content" in payload
@@ -108,6 +116,8 @@ class TestEncodeMessage:
         msg["To"] = "test@example.com"
         msg["Subject"] = "Test"
         encoded = encode_message(msg)
+        # Should not contain trailing padding
+        assert not encoded.endswith("=")
         # Should decode without errors
-        decoded = base64.urlsafe_b64decode(encoded)
+        decoded = _b64url_decode(encoded)
         assert b"test body" in decoded

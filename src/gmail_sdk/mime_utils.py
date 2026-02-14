@@ -10,7 +10,7 @@ from email.mime.text import MIMEText
 def encode_message(mime_msg: MIMEText | MIMEMultipart) -> str:
     """Base64url-encode a MIME message for the Gmail API."""
     raw = mime_msg.as_bytes()
-    return base64.urlsafe_b64encode(raw).decode("ascii")
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
 
 
 def build_simple_message(

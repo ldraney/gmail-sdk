@@ -148,6 +148,7 @@ class AuthMixin:
         """Save token data to disk with restricted permissions."""
         token_path = Path(secrets_dir) / f"gmail-{account}.json"
         fd = os.open(str(token_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        os.fchmod(fd, 0o600)
         with os.fdopen(fd, "w") as f:
             json.dump(token_data, f, indent=2)
 

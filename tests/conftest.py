@@ -8,9 +8,9 @@ from pathlib import Path
 import pytest
 
 from gmail_sdk import GmailClient
+from gmail_sdk.client import DEFAULT_SECRETS_DIR
 
 
-DEFAULT_SECRETS_DIR = os.path.join(os.path.expanduser("~"), "secrets", "google-oauth")
 DEFAULT_ACCOUNT = "draneylucas"
 
 

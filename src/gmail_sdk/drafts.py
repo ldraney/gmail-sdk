@@ -104,6 +104,38 @@ class DraftsMixin:
             message["threadId"] = thread_id
         return self._post("/users/me/drafts", json={"message": message})
 
+    def update_draft(
+        self,
+        draft_id: str,
+        to: str,
+        subject: str,
+        body: str,
+        from_addr: str | None = None,
+        cc: str | None = None,
+        bcc: str | None = None,
+        thread_id: str | None = None,
+    ) -> dict[str, Any]:
+        """PUT /users/me/drafts/{id} — Replace a draft's message content.
+
+        Args:
+            draft_id: The draft ID.
+            to: Recipient email address.
+            subject: Email subject.
+            body: Plain text body.
+            from_addr: Sender address (optional, Gmail defaults to authenticated user).
+            cc: CC address.
+            bcc: BCC address.
+            thread_id: Thread ID to attach draft to.
+
+        Returns:
+            Updated draft resource.
+        """
+        raw = build_simple_message(to=to, subject=subject, body=body, from_addr=from_addr, cc=cc, bcc=bcc)
+        message: dict[str, Any] = {"raw": raw}
+        if thread_id:
+            message["threadId"] = thread_id
+        return self._put(f"/users/me/drafts/{draft_id}", json={"message": message})
+
     def send_draft(self, draft_id: str) -> dict[str, Any]:
         """POST /users/me/drafts/send — Send an existing draft.
 

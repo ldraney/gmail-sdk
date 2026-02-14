@@ -35,10 +35,10 @@ class ConvenienceMixin:
         Returns:
             Sent message resource.
         """
-        original = self.get_message(message_id, format_="metadata", metadata_headers=["From", "Subject", "Message-ID", "References"])
+        original = self.get_message(message_id, format_="metadata", metadata_headers=["From", "Subject", "Message-ID", "References", "Reply-To"])
         headers = original.get("payload", {}).get("headers", [])
 
-        to = _get_header(headers, "From")
+        to = _get_header(headers, "Reply-To") or _get_header(headers, "From")
         subject = _get_header(headers, "Subject")
         if not subject.lower().startswith("re:"):
             subject = f"Re: {subject}"

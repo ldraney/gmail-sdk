@@ -11,10 +11,12 @@ Python SDK for the Gmail REST API. Uses httpx directly — no google-api-python-
 
 ```bash
 uv sync
-uv run pytest           # run all tests
-uv run pytest -v        # verbose
-uv run pytest -k unit   # unit tests only
+uv run pytest                          # run all tests
+uv run pytest -v                       # verbose
+uv run pytest tests/test_auth.py tests/test_mime.py tests/test_convenience.py tests/test_client.py  # unit tests only
 ```
+
+Note: integration tests auto-skip without a token file at `~/secrets/google-oauth/gmail-draneylucas.json`.
 
 ## Architecture
 

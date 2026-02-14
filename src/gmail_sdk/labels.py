@@ -73,7 +73,7 @@ class LabelsMixin:
         Returns:
             Updated label resource.
         """
-        payload: dict[str, Any] = {}
+        payload: dict[str, Any] = {"id": label_id}
         if name is not None:
             payload["name"] = name
         if label_list_visibility is not None:
