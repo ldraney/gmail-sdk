@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import base64
+from unittest.mock import MagicMock, patch, call
 
-from gmail_sdk.convenience import ConvenienceMixin, _get_header
+from gmail_sdk.convenience import ConvenienceMixin, _get_header, _extract_email
 
 
 class TestGetHeader:
@@ -153,14 +154,156 @@ class TestExtractBody:
         assert ConvenienceMixin._extract_body(payload, mime_type="text/html") is None
 
 
-class TestMarkAsReadUnread:
-    def test_mark_as_read_exists(self):
-        assert hasattr(ConvenienceMixin, "mark_as_read")
+class TestExtractEmail:
+    def test_bare_email(self):
+        assert _extract_email("alice@example.com") == "alice@example.com"
 
-    def test_mark_as_unread_exists(self):
-        assert hasattr(ConvenienceMixin, "mark_as_unread")
+    def test_display_name_with_angle_brackets(self):
+        assert _extract_email("Alice Smith <alice@example.com>") == "alice@example.com"
+
+    def test_angle_brackets_only(self):
+        assert _extract_email("<alice@example.com>") == "alice@example.com"
+
+    def test_case_insensitive(self):
+        assert _extract_email("Alice@Example.COM") == "alice@example.com"
+
+    def test_empty_string(self):
+        assert _extract_email("") == ""
+
+
+class TestMarkAsReadUnread:
+    def test_mark_as_read_calls_modify(self):
+        mixin = ConvenienceMixin()
+        mixin.modify_message = MagicMock(return_value={"id": "msg1"})
+        result = mixin.mark_as_read("msg1")
+        mixin.modify_message.assert_called_once_with("msg1", remove_label_ids=["UNREAD"])
+        assert result == {"id": "msg1"}
+
+    def test_mark_as_unread_calls_modify(self):
+        mixin = ConvenienceMixin()
+        mixin.modify_message = MagicMock(return_value={"id": "msg1"})
+        result = mixin.mark_as_unread("msg1")
+        mixin.modify_message.assert_called_once_with("msg1", add_label_ids=["UNREAD"])
+        assert result == {"id": "msg1"}
 
 
 class TestReplyAll:
-    def test_reply_all_exists(self):
-        assert hasattr(ConvenienceMixin, "reply_all")
+    def _make_mixin(self, headers, my_email="me@example.com"):
+        """Create a ConvenienceMixin with mocked dependencies."""
+        mixin = ConvenienceMixin()
+        mixin.get_message = MagicMock(return_value={
+            "threadId": "thread1",
+            "payload": {"headers": headers},
+        })
+        mixin.get_profile = MagicMock(return_value={"emailAddress": my_email})
+        mixin.send_raw_message = MagicMock(return_value={"id": "sent1"})
+        return mixin
+
+    def test_excludes_self_with_display_name(self):
+        """The key bug fix: self-exclusion must work with display names."""
+        headers = [
+            {"name": "From", "value": "Alice <alice@example.com>"},
+            {"name": "To", "value": "Me <me@example.com>, Bob <bob@example.com>"},
+            {"name": "Subject", "value": "Team thread"},
+            {"name": "Message-ID", "value": "<id@example.com>"},
+        ]
+        mixin = self._make_mixin(headers, my_email="me@example.com")
+        mixin.reply_all("msg1", body="Thanks!")
+
+        # Verify send_raw_message was called
+        mixin.send_raw_message.assert_called_once()
+        raw = mixin.send_raw_message.call_args.kwargs["raw"]
+
+        # Decode and check recipients
+        from email import message_from_bytes
+        padding = 4 - len(raw) % 4
+        if padding != 4:
+            raw += "=" * padding
+        import base64
+        msg = message_from_bytes(base64.urlsafe_b64decode(raw))
+
+        # To should be From (alice), Cc should be Bob only (me excluded)
+        assert msg["To"] == "Alice <alice@example.com>"
+        assert "bob@example.com" in msg["Cc"].lower()
+        assert "me@example.com" not in msg["Cc"].lower()
+
+    def test_deduplicates_addresses_with_different_formats(self):
+        """Same email with and without display name should not appear twice."""
+        headers = [
+            {"name": "From", "value": "alice@example.com"},
+            {"name": "To", "value": "me@example.com, Alice <alice@example.com>"},
+            {"name": "Subject", "value": "Test"},
+            {"name": "Message-ID", "value": "<id@example.com>"},
+        ]
+        mixin = self._make_mixin(headers, my_email="me@example.com")
+        mixin.reply_all("msg1", body="Reply")
+
+        raw = mixin.send_raw_message.call_args.kwargs["raw"]
+        from email import message_from_bytes
+        padding = 4 - len(raw) % 4
+        if padding != 4:
+            raw += "=" * padding
+        import base64
+        msg = message_from_bytes(base64.urlsafe_b64decode(raw))
+
+        # Alice is already in To, should not also be in Cc
+        assert msg["Cc"] is None
+
+    def test_includes_cc_recipients(self):
+        headers = [
+            {"name": "From", "value": "alice@example.com"},
+            {"name": "To", "value": "me@example.com"},
+            {"name": "Cc", "value": "charlie@example.com, dave@example.com"},
+            {"name": "Subject", "value": "Test"},
+            {"name": "Message-ID", "value": "<id@example.com>"},
+        ]
+        mixin = self._make_mixin(headers, my_email="me@example.com")
+        mixin.reply_all("msg1", body="Reply")
+
+        raw = mixin.send_raw_message.call_args.kwargs["raw"]
+        from email import message_from_bytes
+        padding = 4 - len(raw) % 4
+        if padding != 4:
+            raw += "=" * padding
+        import base64
+        msg = message_from_bytes(base64.urlsafe_b64decode(raw))
+
+        assert "charlie@example.com" in msg["Cc"]
+        assert "dave@example.com" in msg["Cc"]
+
+    def test_uses_reply_to_when_present(self):
+        headers = [
+            {"name": "From", "value": "alice@example.com"},
+            {"name": "Reply-To", "value": "reply@example.com"},
+            {"name": "To", "value": "me@example.com"},
+            {"name": "Subject", "value": "Test"},
+            {"name": "Message-ID", "value": "<id@example.com>"},
+        ]
+        mixin = self._make_mixin(headers, my_email="me@example.com")
+        mixin.reply_all("msg1", body="Reply")
+
+        raw = mixin.send_raw_message.call_args.kwargs["raw"]
+        from email import message_from_bytes
+        padding = 4 - len(raw) % 4
+        if padding != 4:
+            raw += "=" * padding
+        import base64
+        msg = message_from_bytes(base64.urlsafe_b64decode(raw))
+
+        assert msg["To"] == "reply@example.com"
+        # alice (From) should be in Cc since Reply-To is different
+        assert "alice@example.com" in msg["Cc"]
+
+
+class TestBatchDeleteMessages:
+    def test_calls_correct_endpoint(self):
+        mixin = ConvenienceMixin()
+        # batch_delete_messages is on MessagesMixin, but we can test via duck typing
+        from gmail_sdk.messages import MessagesMixin
+        m = MessagesMixin()
+        m._post = MagicMock(return_value={})
+        m.batch_delete_messages(["msg1", "msg2"])
+        m._post.assert_called_once_with(
+            "/users/me/messages/batchDelete",
+            json={"ids": ["msg1", "msg2"]},
+        )

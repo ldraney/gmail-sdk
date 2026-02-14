@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from email.utils import parseaddr
 from typing import Any
 
 from .mime_utils import build_reply_message, build_forward_message
@@ -13,6 +14,18 @@ def _get_header(headers: list[dict[str, str]], name: str) -> str:
         if h["name"].lower() == name.lower():
             return h["value"]
     return ""
+
+
+def _extract_email(addr: str) -> str:
+    """Extract the bare email address from a potentially display-name-wrapped address.
+
+    Handles formats like:
+        "alice@example.com" -> "alice@example.com"
+        "Alice Smith <alice@example.com>" -> "alice@example.com"
+        "<alice@example.com>" -> "alice@example.com"
+    """
+    _, email = parseaddr(addr)
+    return email.lower()
 
 
 class ConvenienceMixin:
@@ -128,9 +141,10 @@ class ConvenienceMixin:
         my_email = self.get_profile()["emailAddress"].lower()
 
         # Collect all recipients: reply-to/from goes in To, everyone else in Cc
-        all_addrs = set()
+        # Use _extract_email to handle display names like "Alice <alice@example.com>"
+        seen_emails = set()
         to_addr = reply_to
-        all_addrs.add(to_addr.lower().strip())
+        seen_emails.add(_extract_email(to_addr))
 
         cc_addrs = []
         for addr_str in [orig_from, orig_to, orig_cc]:
@@ -138,9 +152,10 @@ class ConvenienceMixin:
                 continue
             for addr in addr_str.split(","):
                 addr = addr.strip()
-                if addr and addr.lower() not in all_addrs and addr.lower() != my_email:
+                bare = _extract_email(addr)
+                if bare and bare not in seen_emails and bare != my_email:
                     cc_addrs.append(addr)
-                    all_addrs.add(addr.lower())
+                    seen_emails.add(bare)
 
         raw = build_reply_message(
             to=to_addr,
