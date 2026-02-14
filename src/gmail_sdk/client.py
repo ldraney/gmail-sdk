@@ -15,6 +15,7 @@ from .labels import LabelsMixin
 from .attachments import AttachmentsMixin
 from .filters import FiltersMixin
 from .settings import SettingsMixin
+from .history import HistoryMixin
 from .convenience import ConvenienceMixin
 
 GMAIL_BASE = "https://gmail.googleapis.com/gmail/v1"
@@ -39,6 +40,7 @@ class GmailClient(
     AttachmentsMixin,
     FiltersMixin,
     SettingsMixin,
+    HistoryMixin,
     ConvenienceMixin,
 ):
     """Synchronous Python client for the Gmail REST API.

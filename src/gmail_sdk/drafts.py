@@ -64,6 +64,7 @@ class DraftsMixin:
         cc: str | None = None,
         bcc: str | None = None,
         thread_id: str | None = None,
+        html_body: str | None = None,
     ) -> dict[str, Any]:
         """POST /users/me/drafts — Create a new draft.
 
@@ -75,11 +76,12 @@ class DraftsMixin:
             cc: CC address.
             bcc: BCC address.
             thread_id: Thread ID to attach draft to.
+            html_body: Optional HTML body.
 
         Returns:
             Created draft resource.
         """
-        raw = build_simple_message(to=to, subject=subject, body=body, from_addr=from_addr, cc=cc, bcc=bcc)
+        raw = build_simple_message(to=to, subject=subject, body=body, from_addr=from_addr, cc=cc, bcc=bcc, html_body=html_body)
         message: dict[str, Any] = {"raw": raw}
         if thread_id:
             message["threadId"] = thread_id
@@ -114,6 +116,7 @@ class DraftsMixin:
         cc: str | None = None,
         bcc: str | None = None,
         thread_id: str | None = None,
+        html_body: str | None = None,
     ) -> dict[str, Any]:
         """PUT /users/me/drafts/{id} — Replace a draft's message content.
 
@@ -126,11 +129,12 @@ class DraftsMixin:
             cc: CC address.
             bcc: BCC address.
             thread_id: Thread ID to attach draft to.
+            html_body: Optional HTML body.
 
         Returns:
             Updated draft resource.
         """
-        raw = build_simple_message(to=to, subject=subject, body=body, from_addr=from_addr, cc=cc, bcc=bcc)
+        raw = build_simple_message(to=to, subject=subject, body=body, from_addr=from_addr, cc=cc, bcc=bcc, html_body=html_body)
         message: dict[str, Any] = {"raw": raw}
         if thread_id:
             message["threadId"] = thread_id

@@ -109,6 +109,96 @@ class TestBuildForwardMessage:
         assert "Original content" in payload
 
 
+class TestBuildSimpleMessageHTML:
+    def test_html_creates_multipart_alternative(self):
+        raw = build_simple_message(
+            to="test@example.com",
+            subject="HTML Test",
+            body="Plain version",
+            html_body="<b>HTML version</b>",
+        )
+        decoded = _b64url_decode(raw)
+        msg = message_from_bytes(decoded)
+        assert msg.get_content_type() == "multipart/alternative"
+        parts = msg.get_payload()
+        assert len(parts) == 2
+        assert parts[0].get_content_type() == "text/plain"
+        assert "Plain version" in parts[0].get_payload(decode=True).decode()
+        assert parts[1].get_content_type() == "text/html"
+        assert "<b>HTML version</b>" in parts[1].get_payload(decode=True).decode()
+
+    def test_plain_only_still_works(self):
+        raw = build_simple_message(to="test@example.com", subject="Plain", body="Just plain")
+        decoded = _b64url_decode(raw)
+        msg = message_from_bytes(decoded)
+        assert msg.get_content_type() == "text/plain"
+        assert "Just plain" in msg.get_payload(decode=True).decode()
+
+    def test_html_message_has_headers(self):
+        raw = build_simple_message(
+            to="to@example.com",
+            subject="HTML",
+            body="plain",
+            html_body="<p>html</p>",
+            cc="cc@example.com",
+            from_addr="sender@example.com",
+        )
+        decoded = _b64url_decode(raw)
+        msg = message_from_bytes(decoded)
+        assert msg["To"] == "to@example.com"
+        assert msg["Subject"] == "HTML"
+        assert msg["Cc"] == "cc@example.com"
+        assert msg["From"] == "sender@example.com"
+
+
+class TestBuildReplyMessageHTML:
+    def test_reply_html_has_both_parts_and_threading(self):
+        raw = build_reply_message(
+            to="original@example.com",
+            subject="Re: Hello",
+            body="Thanks!",
+            message_id="<abc@example.com>",
+            html_body="<b>Thanks!</b>",
+        )
+        decoded = _b64url_decode(raw)
+        msg = message_from_bytes(decoded)
+        assert msg.get_content_type() == "multipart/alternative"
+        assert msg["In-Reply-To"] == "<abc@example.com>"
+        parts = msg.get_payload()
+        assert len(parts) == 2
+
+    def test_reply_with_cc(self):
+        raw = build_reply_message(
+            to="to@example.com",
+            subject="Re: Test",
+            body="body",
+            message_id="<id@example.com>",
+            cc="cc@example.com",
+        )
+        decoded = _b64url_decode(raw)
+        msg = message_from_bytes(decoded)
+        assert msg["Cc"] == "cc@example.com"
+
+
+class TestBuildForwardMessageHTML:
+    def test_forward_html_has_both_parts(self):
+        raw = build_forward_message(
+            to="fwd@example.com",
+            subject="Fwd: Hello",
+            original_body="Original",
+            html_body="<p>Forwarded HTML</p>",
+        )
+        decoded = _b64url_decode(raw)
+        msg = message_from_bytes(decoded)
+        assert msg.get_content_type() == "multipart/alternative"
+        parts = msg.get_payload()
+        assert len(parts) == 2
+        plain = parts[0].get_payload(decode=True).decode()
+        assert "Original" in plain
+        html = parts[1].get_payload(decode=True).decode()
+        assert "<p>Forwarded HTML</p>" in html
+
+
 class TestEncodeMessage:
     def test_base64url_encoding(self):
         from email.mime.text import MIMEText

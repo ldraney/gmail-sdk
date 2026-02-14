@@ -25,6 +25,23 @@ client.send_message(to="someone@example.com", subject="Hello", body="Hi there!")
 
 # Reply to a message
 client.reply(message_id="abc123", body="Thanks!")
+
+# Send an HTML email
+client.send_message(
+    to="someone@example.com",
+    subject="Hello",
+    body="Plain text fallback",
+    html_body="<h1>Hello!</h1><p>This is <b>HTML</b>.</p>",
+)
+
+# Reply-all, mark as read/unread
+client.reply_all(message_id="abc123", body="Thanks everyone!")
+client.mark_as_read(message_id="abc123")
+client.mark_as_unread(message_id="abc123")
+
+# List mailbox changes since a history ID (for incremental sync)
+profile = client.get_profile()
+changes = client.list_history(start_history_id=profile["historyId"])
 ```
 
 ## First-Time Setup
