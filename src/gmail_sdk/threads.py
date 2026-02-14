@@ -27,6 +27,8 @@ class ThreadsMixin:
 
         Returns:
             {"threads": [...], "nextPageToken": "...", "resultSizeEstimate": ...}
+
+            Note: The "threads" key is absent when no results match the query.
         """
         params: dict[str, Any] = {"maxResults": max_results}
         if query:
@@ -77,12 +79,11 @@ class ThreadsMixin:
             Modified thread resource.
         """
         payload: dict[str, Any] = {}
-        if add_label_ids:
+        if add_label_ids is not None:
             payload["addLabelIds"] = add_label_ids
-        if remove_label_ids:
+        if remove_label_ids is not None:
             payload["removeLabelIds"] = remove_label_ids
-        resp = self._post(f"/users/me/threads/{thread_id}/modify", json=payload)
-        return resp.json() if resp.content else {}
+        return self._post(f"/users/me/threads/{thread_id}/modify", json=payload)
 
     def trash_thread(self, thread_id: str) -> dict[str, Any]:
         """POST /users/me/threads/{id}/trash — Move thread to trash.
@@ -93,8 +94,7 @@ class ThreadsMixin:
         Returns:
             Trashed thread resource.
         """
-        resp = self._post(f"/users/me/threads/{thread_id}/trash")
-        return resp.json() if resp.content else {}
+        return self._post(f"/users/me/threads/{thread_id}/trash")
 
     def untrash_thread(self, thread_id: str) -> dict[str, Any]:
         """POST /users/me/threads/{id}/untrash — Remove thread from trash.
@@ -105,8 +105,7 @@ class ThreadsMixin:
         Returns:
             Untrashed thread resource.
         """
-        resp = self._post(f"/users/me/threads/{thread_id}/untrash")
-        return resp.json() if resp.content else {}
+        return self._post(f"/users/me/threads/{thread_id}/untrash")
 
     def delete_thread(self, thread_id: str) -> int:
         """DELETE /users/me/threads/{id} — Permanently delete a thread.

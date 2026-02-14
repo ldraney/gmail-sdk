@@ -15,6 +15,7 @@ class DraftsMixin:
         max_results: int = 10,
         page_token: str | None = None,
         query: str | None = None,
+        include_spam_trash: bool = False,
     ) -> dict[str, Any]:
         """GET /users/me/drafts — List drafts.
 
@@ -22,15 +23,20 @@ class DraftsMixin:
             max_results: Maximum number of drafts to return.
             page_token: Pagination token.
             query: Gmail search query.
+            include_spam_trash: Include spam and trash drafts.
 
         Returns:
             {"drafts": [...], "nextPageToken": "...", "resultSizeEstimate": ...}
+
+            Note: The "drafts" key is absent when no results match the query.
         """
         params: dict[str, Any] = {"maxResults": max_results}
         if page_token:
             params["pageToken"] = page_token
         if query:
             params["q"] = query
+        if include_spam_trash:
+            params["includeSpamTrash"] = True
         return self._get("/users/me/drafts", params=params)
 
     def get_draft(
@@ -77,8 +83,7 @@ class DraftsMixin:
         message: dict[str, Any] = {"raw": raw}
         if thread_id:
             message["threadId"] = thread_id
-        resp = self._post("/users/me/drafts", json={"message": message})
-        return resp.json() if resp.content else {}
+        return self._post("/users/me/drafts", json={"message": message})
 
     def create_raw_draft(
         self,
@@ -97,8 +102,7 @@ class DraftsMixin:
         message: dict[str, Any] = {"raw": raw}
         if thread_id:
             message["threadId"] = thread_id
-        resp = self._post("/users/me/drafts", json={"message": message})
-        return resp.json() if resp.content else {}
+        return self._post("/users/me/drafts", json={"message": message})
 
     def send_draft(self, draft_id: str) -> dict[str, Any]:
         """POST /users/me/drafts/send — Send an existing draft.
@@ -109,8 +113,7 @@ class DraftsMixin:
         Returns:
             Sent message resource.
         """
-        resp = self._post("/users/me/drafts/send", json={"id": draft_id})
-        return resp.json() if resp.content else {}
+        return self._post("/users/me/drafts/send", json={"id": draft_id})
 
     def delete_draft(self, draft_id: str) -> int:
         """DELETE /users/me/drafts/{id} — Permanently delete a draft.

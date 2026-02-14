@@ -123,7 +123,7 @@ class TestExtractBody:
                 },
             ],
         }
-        assert ConvenienceMixin._extract_body(payload) == "(no text body found)"
+        assert ConvenienceMixin._extract_body(payload) is None
 
     def test_empty_payload(self):
-        assert ConvenienceMixin._extract_body({}) == "(no text body found)"
+        assert ConvenienceMixin._extract_body({}) is None

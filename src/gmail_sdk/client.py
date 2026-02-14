@@ -95,10 +95,10 @@ class GmailClient(
         self,
         path: str,
         json: dict[str, Any] | None = None,
-    ) -> httpx.Response:
+    ) -> dict[str, Any]:
         resp = self._http.post(path, json=json)
         self._raise_api_error(resp)
-        return resp
+        return resp.json() if resp.content else {}
 
     def _delete(self, path: str) -> int:
         resp = self._http.delete(path)
@@ -114,6 +114,11 @@ class GmailClient(
         resp = self._http.put(path, json=json)
         self._raise_api_error(resp)
         return resp.json() if resp.content else {}
+
+    def __repr__(self) -> str:
+        if self.account:
+            return f"GmailClient(account={self.account!r})"
+        return "GmailClient()"
 
     def __enter__(self) -> GmailClient:
         return self

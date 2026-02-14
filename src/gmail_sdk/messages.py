@@ -37,6 +37,8 @@ class MessagesMixin:
 
         Returns:
             {"messages": [{"id": "...", "threadId": "..."}], "nextPageToken": "...", "resultSizeEstimate": ...}
+
+            Note: The "messages" key is absent when no results match the query.
         """
         params: dict[str, Any] = {"maxResults": max_results}
         if query:
@@ -98,8 +100,7 @@ class MessagesMixin:
         payload: dict[str, Any] = {"raw": raw}
         if thread_id:
             payload["threadId"] = thread_id
-        resp = self._post("/users/me/messages/send", json=payload)
-        return resp.json() if resp.content else {}
+        return self._post("/users/me/messages/send", json=payload)
 
     def send_raw_message(
         self,
@@ -118,8 +119,7 @@ class MessagesMixin:
         payload: dict[str, Any] = {"raw": raw}
         if thread_id:
             payload["threadId"] = thread_id
-        resp = self._post("/users/me/messages/send", json=payload)
-        return resp.json() if resp.content else {}
+        return self._post("/users/me/messages/send", json=payload)
 
     def modify_message(
         self,
@@ -138,12 +138,11 @@ class MessagesMixin:
             Modified message resource.
         """
         payload: dict[str, Any] = {}
-        if add_label_ids:
+        if add_label_ids is not None:
             payload["addLabelIds"] = add_label_ids
-        if remove_label_ids:
+        if remove_label_ids is not None:
             payload["removeLabelIds"] = remove_label_ids
-        resp = self._post(f"/users/me/messages/{message_id}/modify", json=payload)
-        return resp.json() if resp.content else {}
+        return self._post(f"/users/me/messages/{message_id}/modify", json=payload)
 
     def trash_message(self, message_id: str) -> dict[str, Any]:
         """POST /users/me/messages/{id}/trash — Move message to trash.
@@ -154,8 +153,7 @@ class MessagesMixin:
         Returns:
             Trashed message resource.
         """
-        resp = self._post(f"/users/me/messages/{message_id}/trash")
-        return resp.json() if resp.content else {}
+        return self._post(f"/users/me/messages/{message_id}/trash")
 
     def untrash_message(self, message_id: str) -> dict[str, Any]:
         """POST /users/me/messages/{id}/untrash — Remove message from trash.
@@ -166,8 +164,7 @@ class MessagesMixin:
         Returns:
             Untrashed message resource.
         """
-        resp = self._post(f"/users/me/messages/{message_id}/untrash")
-        return resp.json() if resp.content else {}
+        return self._post(f"/users/me/messages/{message_id}/untrash")
 
     def delete_message(self, message_id: str) -> int:
         """DELETE /users/me/messages/{id} — Permanently delete a message.
@@ -194,8 +191,8 @@ class MessagesMixin:
             remove_label_ids: Labels to remove.
         """
         payload: dict[str, Any] = {"ids": message_ids}
-        if add_label_ids:
+        if add_label_ids is not None:
             payload["addLabelIds"] = add_label_ids
-        if remove_label_ids:
+        if remove_label_ids is not None:
             payload["removeLabelIds"] = remove_label_ids
         self._post("/users/me/messages/batchModify", json=payload)

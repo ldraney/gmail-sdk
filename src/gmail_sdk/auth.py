@@ -128,7 +128,11 @@ class AuthMixin:
         creds_path = os.path.join(secrets_dir, "credentials.json")
         with open(creds_path) as f:
             data = json.load(f)
-        return data["installed"]
+        if "installed" in data:
+            return data["installed"]
+        if "web" in data:
+            return data["web"]
+        raise ValueError("credentials.json must contain an 'installed' or 'web' application config")
 
     @staticmethod
     def _load_token(account: str, secrets_dir: str) -> dict[str, Any] | None:

@@ -80,7 +80,7 @@ class ConvenienceMixin:
             subject = f"Fwd: {subject}"
 
         # Extract body from payload
-        original_body = self._extract_body(original.get("payload", {}))
+        original_body = self._extract_body(original.get("payload", {})) or "(no text body found)"
 
         raw = build_forward_message(
             to=to,
@@ -102,11 +102,11 @@ class ConvenienceMixin:
         return self.modify_message(message_id, remove_label_ids=["INBOX"])
 
     @staticmethod
-    def _extract_body(payload: dict[str, Any]) -> str:
+    def _extract_body(payload: dict[str, Any]) -> str | None:
         """Extract plain text body from a Gmail message payload.
 
         Recursively traverses nested multipart structures to find the first
-        text/plain part.
+        text/plain part. Returns None if no text/plain part is found.
         """
         import base64
 
@@ -117,7 +117,7 @@ class ConvenienceMixin:
         # Multipart — recurse into parts
         for part in payload.get("parts", []):
             result = ConvenienceMixin._extract_body(part)
-            if result != "(no text body found)":
+            if result is not None:
                 return result
 
-        return "(no text body found)"
+        return None

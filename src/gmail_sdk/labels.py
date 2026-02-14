@@ -43,7 +43,7 @@ class LabelsMixin:
         Returns:
             Created label resource.
         """
-        resp = self._post(
+        return self._post(
             "/users/me/labels",
             json={
                 "name": name,
@@ -51,7 +51,6 @@ class LabelsMixin:
                 "messageListVisibility": message_list_visibility,
             },
         )
-        return resp.json() if resp.content else {}
 
     def update_label(
         self,
@@ -60,11 +59,10 @@ class LabelsMixin:
         label_list_visibility: str | None = None,
         message_list_visibility: str | None = None,
     ) -> dict[str, Any]:
-        """PATCH /users/me/labels/{id} — Update a label.
+        """Partial update via PATCH /users/me/labels/{id}.
 
-        This performs a partial update via PATCH. Only the fields you provide
-        will be changed; omitted fields remain unchanged. This is not a full
-        replacement (PUT).
+        Only the fields you provide will be changed; omitted fields remain
+        unchanged.
 
         Args:
             label_id: The label ID.
