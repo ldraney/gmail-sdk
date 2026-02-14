@@ -90,6 +90,90 @@ class ConvenienceMixin:
         )
         return self.send_raw_message(raw=raw)
 
+    def reply_all(
+        self,
+        message_id: str,
+        body: str,
+    ) -> dict[str, Any]:
+        """Reply-all to a message in its thread.
+
+        Fetches the original message headers, collects all recipients (To, Cc)
+        excluding the authenticated user, builds a properly threaded reply, and sends it.
+
+        Args:
+            message_id: The message ID to reply to.
+            body: Plain text reply body.
+
+        Returns:
+            Sent message resource.
+        """
+        original = self.get_message(
+            message_id,
+            format_="metadata",
+            metadata_headers=["From", "To", "Cc", "Subject", "Message-ID", "References", "Reply-To"],
+        )
+        headers = original.get("payload", {}).get("headers", [])
+
+        reply_to = _get_header(headers, "Reply-To") or _get_header(headers, "From")
+        orig_from = _get_header(headers, "From")
+        orig_to = _get_header(headers, "To")
+        orig_cc = _get_header(headers, "Cc")
+        subject = _get_header(headers, "Subject")
+        if not subject.lower().startswith("re:"):
+            subject = f"Re: {subject}"
+        orig_message_id = _get_header(headers, "Message-ID")
+        references = _get_header(headers, "References")
+
+        # Get own email to exclude from recipients
+        my_email = self.get_profile()["emailAddress"].lower()
+
+        # Collect all recipients: reply-to/from goes in To, everyone else in Cc
+        all_addrs = set()
+        to_addr = reply_to
+        all_addrs.add(to_addr.lower().strip())
+
+        cc_addrs = []
+        for addr_str in [orig_from, orig_to, orig_cc]:
+            if not addr_str:
+                continue
+            for addr in addr_str.split(","):
+                addr = addr.strip()
+                if addr and addr.lower() not in all_addrs and addr.lower() != my_email:
+                    cc_addrs.append(addr)
+                    all_addrs.add(addr.lower())
+
+        raw = build_reply_message(
+            to=to_addr,
+            subject=subject,
+            body=body,
+            message_id=orig_message_id,
+            references=references,
+            cc=", ".join(cc_addrs) if cc_addrs else None,
+        )
+        return self.send_raw_message(raw=raw, thread_id=original["threadId"])
+
+    def mark_as_read(self, message_id: str) -> dict[str, Any]:
+        """Mark a message as read (remove UNREAD label).
+
+        Args:
+            message_id: The message ID.
+
+        Returns:
+            Modified message resource.
+        """
+        return self.modify_message(message_id, remove_label_ids=["UNREAD"])
+
+    def mark_as_unread(self, message_id: str) -> dict[str, Any]:
+        """Mark a message as unread (add UNREAD label).
+
+        Args:
+            message_id: The message ID.
+
+        Returns:
+            Modified message resource.
+        """
+        return self.modify_message(message_id, add_label_ids=["UNREAD"])
+
     def archive(self, message_id: str) -> dict[str, Any]:
         """Archive a message (remove INBOX label).
 
@@ -102,21 +186,26 @@ class ConvenienceMixin:
         return self.modify_message(message_id, remove_label_ids=["INBOX"])
 
     @staticmethod
-    def _extract_body(payload: dict[str, Any]) -> str | None:
-        """Extract plain text body from a Gmail message payload.
+    def _extract_body(payload: dict[str, Any], mime_type: str = "text/plain") -> str | None:
+        """Extract body from a Gmail message payload by MIME type.
 
         Recursively traverses nested multipart structures to find the first
-        text/plain part. Returns None if no text/plain part is found.
+        part matching the given MIME type. Returns None if no match is found.
+
+        Args:
+            payload: Gmail message payload dict.
+            mime_type: MIME type to extract (default: "text/plain"). Use
+                "text/html" to get the HTML body.
         """
         import base64
 
         # Simple single-part message
-        if payload.get("mimeType") == "text/plain" and "data" in payload.get("body", {}):
+        if payload.get("mimeType") == mime_type and "data" in payload.get("body", {}):
             return base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8", errors="replace")
 
         # Multipart — recurse into parts
         for part in payload.get("parts", []):
-            result = ConvenienceMixin._extract_body(part)
+            result = ConvenienceMixin._extract_body(part, mime_type=mime_type)
             if result is not None:
                 return result
 

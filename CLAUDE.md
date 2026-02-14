@@ -29,7 +29,8 @@ Note: integration tests auto-skip without a token file at `~/secrets/google-oaut
 - `AttachmentsMixin` — attachment download
 - `FiltersMixin` — filter CRUD
 - `SettingsMixin` — vacation/forwarding
-- `ConvenienceMixin` — reply, forward, archive
+- `HistoryMixin` — `list_history` for incremental sync / change detection
+- `ConvenienceMixin` — reply, reply_all, forward, archive, mark_as_read, mark_as_unread
 
 ## Secrets
 

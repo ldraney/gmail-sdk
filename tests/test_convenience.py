@@ -127,3 +127,40 @@ class TestExtractBody:
 
     def test_empty_payload(self):
         assert ConvenienceMixin._extract_body({}) is None
+
+    def test_extract_html_body(self):
+        payload = {
+            "mimeType": "multipart/alternative",
+            "body": {},
+            "parts": [
+                {
+                    "mimeType": "text/plain",
+                    "body": {"data": self._encode("Plain text")},
+                },
+                {
+                    "mimeType": "text/html",
+                    "body": {"data": self._encode("<p>HTML body</p>")},
+                },
+            ],
+        }
+        assert ConvenienceMixin._extract_body(payload, mime_type="text/html") == "<p>HTML body</p>"
+
+    def test_extract_html_returns_none_when_missing(self):
+        payload = {
+            "mimeType": "text/plain",
+            "body": {"data": self._encode("Only plain")},
+        }
+        assert ConvenienceMixin._extract_body(payload, mime_type="text/html") is None
+
+
+class TestMarkAsReadUnread:
+    def test_mark_as_read_exists(self):
+        assert hasattr(ConvenienceMixin, "mark_as_read")
+
+    def test_mark_as_unread_exists(self):
+        assert hasattr(ConvenienceMixin, "mark_as_unread")
+
+
+class TestReplyAll:
+    def test_reply_all_exists(self):
+        assert hasattr(ConvenienceMixin, "reply_all")

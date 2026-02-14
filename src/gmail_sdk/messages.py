@@ -81,6 +81,7 @@ class MessagesMixin:
         cc: str | None = None,
         bcc: str | None = None,
         thread_id: str | None = None,
+        html_body: str | None = None,
     ) -> dict[str, Any]:
         """POST /users/me/messages/send — Send an email.
 
@@ -92,11 +93,12 @@ class MessagesMixin:
             cc: CC address.
             bcc: BCC address.
             thread_id: Thread ID to send in (for replies).
+            html_body: Optional HTML body.
 
         Returns:
             Sent message resource.
         """
-        raw = build_simple_message(to=to, subject=subject, body=body, from_addr=from_addr, cc=cc, bcc=bcc)
+        raw = build_simple_message(to=to, subject=subject, body=body, from_addr=from_addr, cc=cc, bcc=bcc, html_body=html_body)
         payload: dict[str, Any] = {"raw": raw}
         if thread_id:
             payload["threadId"] = thread_id
@@ -196,3 +198,14 @@ class MessagesMixin:
         if remove_label_ids is not None:
             payload["removeLabelIds"] = remove_label_ids
         self._post("/users/me/messages/batchModify", json=payload)
+
+    def batch_delete_messages(self, message_ids: list[str]) -> None:
+        """POST /users/me/messages/batchDelete — Permanently delete multiple messages.
+
+        **WARNING: This permanently and irreversibly deletes messages.
+        They cannot be recovered from trash.**
+
+        Args:
+            message_ids: List of message IDs to delete.
+        """
+        self._post("/users/me/messages/batchDelete", json={"ids": message_ids})
