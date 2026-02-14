@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from email.utils import parseaddr
+from email.utils import getaddresses, parseaddr
 from typing import Any
 
 from .mime_utils import build_reply_message, build_forward_message
@@ -147,15 +147,14 @@ class ConvenienceMixin:
         seen_emails.add(_extract_email(to_addr))
 
         cc_addrs = []
-        for addr_str in [orig_from, orig_to, orig_cc]:
-            if not addr_str:
-                continue
-            for addr in addr_str.split(","):
-                addr = addr.strip()
-                bare = _extract_email(addr)
-                if bare and bare not in seen_emails and bare != my_email:
-                    cc_addrs.append(addr)
-                    seen_emails.add(bare)
+        all_headers = [h for h in [orig_from, orig_to, orig_cc] if h]
+        for display_name, email_addr in getaddresses(all_headers):
+            bare = email_addr.lower()
+            if bare and bare not in seen_emails and bare != my_email:
+                # Preserve display name if present
+                full = f"{display_name} <{email_addr}>" if display_name else email_addr
+                cc_addrs.append(full)
+                seen_emails.add(bare)
 
         raw = build_reply_message(
             to=to_addr,

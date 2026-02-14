@@ -271,6 +271,30 @@ class TestReplyAll:
         assert "charlie@example.com" in msg["Cc"]
         assert "dave@example.com" in msg["Cc"]
 
+    def test_handles_comma_in_display_name(self):
+        """Commas inside quoted display names must not split the address."""
+        headers = [
+            {"name": "From", "value": "alice@example.com"},
+            {"name": "To", "value": '"Doe, John" <john@example.com>, me@example.com'},
+            {"name": "Subject", "value": "Test"},
+            {"name": "Message-ID", "value": "<id@example.com>"},
+        ]
+        mixin = self._make_mixin(headers, my_email="me@example.com")
+        mixin.reply_all("msg1", body="Reply")
+
+        raw = mixin.send_raw_message.call_args.kwargs["raw"]
+        from email import message_from_bytes
+        padding = 4 - len(raw) % 4
+        if padding != 4:
+            raw += "=" * padding
+        import base64
+        msg = message_from_bytes(base64.urlsafe_b64decode(raw))
+
+        # John should be in Cc with display name preserved, me excluded
+        assert "john@example.com" in msg["Cc"].lower()
+        assert "Doe" in msg["Cc"]
+        assert "me@example.com" not in (msg["Cc"] or "").lower()
+
     def test_uses_reply_to_when_present(self):
         headers = [
             {"name": "From", "value": "alice@example.com"},
