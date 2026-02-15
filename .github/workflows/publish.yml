@@ -42,7 +42,7 @@ jobs:
         id: pypi_check
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            "https://pypi.org/pypi/ldraney-gmail-sdk/${{ steps.version.outputs.version }}/json")
+            "https://pypi.org/pypi/gmail-sdk-ldraney/${{ steps.version.outputs.version }}/json")
           if [ "$STATUS" = "200" ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "Version ${{ steps.version.outputs.version }} already on PyPI — skipping publish."
